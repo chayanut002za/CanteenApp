@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
-
-import 'screens/select_zone_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
-import 'screens/profile_screen.dart';
 
 void main() {
   runApp(const CashlessCanteenApp());
@@ -32,8 +29,7 @@ class CashlessCanteenApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
-        '/select-zone': (context) => SelectZoneScreen(),
-        '/profile': (context) => const ProfileScreen(),
+        // '/select-zone' และ '/profile' ถูกลบออก ให้ใช้ push แบบส่ง parameter แทน
       },
     );
   }

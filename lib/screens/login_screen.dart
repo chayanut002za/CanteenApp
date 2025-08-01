@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'select_zone_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,21 +14,40 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   String? _errorText;
 
-  // mock user
-  final String _mockEmail = 'user@example.com';
-  final String _mockPassword = '123456';
-
-  void _login() {
+  Future<void> _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
-    if (email == _mockEmail && password == _mockPassword) {
+    if (email.isEmpty || password.isEmpty) {
       setState(() {
-        _errorText = null;
+        _errorText = 'กรุณากรอกอีเมลและรหัสผ่าน';
       });
-      Navigator.pushReplacementNamed(context, '/select-zone');
-    } else {
+      return;
+    }
+    try {
+      // ส่ง POST ไป backend โดยใช้ key username
+      final response = await http.post(
+        Uri.parse('http://localhost:3001/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: '{"username": "$email", "password": "$password"}',
+      );
+      if (response.statusCode == 200) {
+        setState(() {
+          _errorText = null;
+        });
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => SelectZoneScreen(username: email),
+          ),
+        );
+      } else {
+        setState(() {
+          _errorText = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+        });
+      }
+    } catch (e) {
       setState(() {
-        _errorText = 'อีเมลหรือรหัสผ่านไม่ถูกต้อง';
+        _errorText = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
       });
     }
   }
@@ -55,10 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(_errorText!, style: const TextStyle(color: Colors.red)),
             ],
             const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _login,
-              child: const Text('เข้าสู่ระบบ'),
-            ),
+            ElevatedButton(onPressed: _login, child: const Text('เข้าสู่ระบบ')),
             TextButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/register');

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'order_screen.dart';
 import 'profile_screen.dart';
+import '../services/api_service.dart'; // ต้องมีไฟล์นี้พร้อมฟังก์ชัน fetchAllRestaurants()
+import 'dart:async';
 
 class SelectZoneScreen extends StatefulWidget {
+  final String username;
+  const SelectZoneScreen({super.key, required this.username});
+
   @override
   _SelectZoneScreenState createState() => _SelectZoneScreenState();
 }
@@ -11,21 +16,30 @@ class _SelectZoneScreenState extends State<SelectZoneScreen> {
   int _selectedIndex = 0;
   String selectedZone = 'building9';
 
-  final Map<String, String> zoneNames = {
+  Map<String, String> zoneNames = {
     'building9': 'โรงอาหารอาคาร 9',
     'building16': 'ศูนย์อาหารตึก 16',
   };
 
-  final Map<String, List<Map<String, String>>> zoneRestaurants = {
-    'building9': [
-      {'name': 'ข้าวมันไก่พี่โบ๊ต', 'open': '09:00 - 15:00'},
-      {'name': 'ร้านก๋วยเตี๋ยวเรือ', 'open': '10:00 - 16:00'},
-    ],
-    'building16': [
-      {'name': 'ชานมไข่มุก GG', 'open': '11:00 - 17:00'},
-      {'name': 'โรตีแอนด์ชา', 'open': '12:00 - 18:00'},
-    ],
-  };
+  late Future<List<Map<String, dynamic>>> futureRestaurants;
+
+  @override
+  void initState() {
+    super.initState();
+    futureRestaurants = fetchRestaurants(selectedZone);
+  }
+
+  Future<List<Map<String, dynamic>>> fetchRestaurants(String zone) async {
+    // ดึงข้อมูลจาก backend เฉพาะ zone ที่เลือก
+    return await fetchAllRestaurants(zone);
+  }
+
+  void onZoneSelected(String zoneKey) {
+    setState(() {
+      selectedZone = zoneKey;
+      futureRestaurants = fetchRestaurants(selectedZone);
+    });
+  }
 
   Widget _buildHome() {
     return Column(
@@ -49,22 +63,77 @@ class _SelectZoneScreenState extends State<SelectZoneScreen> {
           ),
         ),
         Expanded(
-          child: ListView.builder(
-            itemCount: zoneRestaurants[selectedZone]!.length,
-            itemBuilder: (context, index) {
-              final restaurant = zoneRestaurants[selectedZone]![index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(restaurant['name']!),
-                  subtitle: Text('เปิด: ${restaurant['open']}'),
-                  trailing: TextButton(
-                    child: const Text('ดูเมนู'),
-                    onPressed: () {
-                      // TODO: ไปหน้าเมนูร้าน
-                    },
-                  ),
-                ),
+          child: FutureBuilder<List<Map<String, dynamic>>>(
+            future: futureRestaurants,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(child: Text('เกิดข้อผิดพลาด: ${snapshot.error}'));
+              } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text('ไม่มีร้านในโซนนี้'));
+              }
+
+              final restaurants = snapshot.data!;
+              return ListView.builder(
+                itemCount: restaurants.length,
+                itemBuilder: (context, index) {
+                  final restaurant = restaurants[index];
+                  return Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 12,
+                        horizontal: 8,
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        leading:
+                            restaurant['image'] != null &&
+                                restaurant['image'].toString().isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  restaurant['image'],
+                                  width: 70,
+                                  height: 70,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(Icons.broken_image, size: 40),
+                                ),
+                              )
+                            : const Icon(Icons.restaurant, size: 50),
+                        title: Text(
+                          restaurant['name'],
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: Text(
+                          'เปิด: ${restaurant['open']} ',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        trailing: TextButton(
+                          child: const Text('ดูเมนู'),
+                          onPressed: () {
+                            // TODO: ไปหน้าเมนูร้าน
+                          },
+                        ),
+                      ),
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -79,7 +148,11 @@ class _SelectZoneScreenState extends State<SelectZoneScreen> {
       appBar: AppBar(title: const Text('Cashless Canteen'), centerTitle: true),
       body: IndexedStack(
         index: _selectedIndex,
-        children: [_buildHome(), const OrderScreen(), const ProfileScreen()],
+        children: [
+          _buildHome(),
+          const OrderScreen(),
+          ProfileScreen(username: widget.username),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
@@ -107,9 +180,7 @@ class _SelectZoneScreenState extends State<SelectZoneScreen> {
     final isSelected = zoneKey == selectedZone;
     return ElevatedButton(
       onPressed: () {
-        setState(() {
-          selectedZone = zoneKey;
-        });
+        onZoneSelected(zoneKey);
       },
       style: ElevatedButton.styleFrom(
         backgroundColor: isSelected ? Colors.green : Colors.grey[300],

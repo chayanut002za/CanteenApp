@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+  final String username;
+  const ProfileScreen({super.key, required this.username});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +14,7 @@ class ProfileScreen extends StatelessWidget {
           children: [
             const Icon(Icons.account_circle, size: 100, color: Colors.green),
             const SizedBox(height: 24),
-            const Text('ชื่อผู้ใช้: user@example.com', style: TextStyle(fontSize: 20)),
+            Text('ชื่อผู้ใช้: $username', style: const TextStyle(fontSize: 20)),
             const SizedBox(height: 16),
             const Text('สถานะ: สมาชิกทั่วไป', style: TextStyle(fontSize: 16)),
             const SizedBox(height: 32),
@@ -23,11 +24,16 @@ class ProfileScreen extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
               ),
               onPressed: () {
                 // กลับไปหน้า login และล้าง navigation stack
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                Navigator.of(
+                  context,
+                ).pushNamedAndRemoveUntil('/login', (route) => false);
               },
             ),
           ],
